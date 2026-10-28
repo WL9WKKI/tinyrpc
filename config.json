@@ -19,10 +19,13 @@
   ],
   "agent": {
     "max_steps": 10,
+    "max_retries": 3,
     "llm": {
-      "base_url": "",
-      "model": "",
-      "api_key": ""
+      "backend": "mock",
+      "base_url": "http://127.0.0.1:11434/v1",
+      "model": "qwen2.5:7b",
+      "api_key": "",
+      "timeout_ms": 30000
     }
   },
   "redis": {
