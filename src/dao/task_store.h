@@ -24,6 +24,8 @@ public:
     virtual void updateTask(const DiagnosisTask& task) = 0;
     virtual void insertTrace(const ReactStep& step) = 0;
     virtual std::vector<ReactStep> getTrace(uint64_t task_id) = 0;
+    // 条件取消：仅当任务非终止态（PENDING/RUNNING）才置 CANCELLED，返回是否成功
+    virtual bool cancelTask(uint64_t id) = 0;
 };
 
 // 内存实现（storage.backend=mock）
@@ -34,6 +36,7 @@ public:
     void updateTask(const DiagnosisTask& task) override;
     void insertTrace(const ReactStep& step) override;
     std::vector<ReactStep> getTrace(uint64_t task_id) override;
+    bool cancelTask(uint64_t id) override;
 
 private:
     std::mutex mutex_;
@@ -50,6 +53,7 @@ public:
     void updateTask(const DiagnosisTask& task) override;
     void insertTrace(const ReactStep& step) override;
     std::vector<ReactStep> getTrace(uint64_t task_id) override;
+    bool cancelTask(uint64_t id) override;
 
 private:
     drogon::orm::DbClientPtr client_;

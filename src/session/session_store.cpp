@@ -1,5 +1,6 @@
 #include "session/session_store.h"
 
+#include <iostream>
 #include <memory>
 #include <sys/time.h>
 
@@ -61,6 +62,7 @@ bool RedisSessionStore::ensureConnected() {
     struct timeval timeout{1, 0};
     ctx_ = redisConnectWithTimeout(host_.c_str(), port_, timeout);
     if (ctx_ == nullptr || ctx_->err) {
+        std::cerr << "[redis] 连接失败，会话缓存降级（上下文可能丢失）\n";
         if (ctx_) { redisFree(ctx_); ctx_ = nullptr; }
         return false;
     }

@@ -133,12 +133,10 @@ void TaskController::cancelTask(const drogon::HttpRequestPtr&,
         callback(jsonResponse(errorJson("task not found"), drogon::k404NotFound));
         return;
     }
-    if (TaskStateMachine::isTerminal(task.status)) {
+    if (!store_->cancelTask(id)) {
         callback(jsonResponse(errorJson("task already finished"), drogon::k409Conflict));
         return;
     }
-    task.status = TaskStatus::CANCELLED;
-    store_->updateTask(task);
     canceller_->cancel(id);
 
     Json::Value v;

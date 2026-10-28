@@ -37,6 +37,8 @@ public:
     void setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics);
 
 private:
+    AgentResult runInternal(const DiagnosisTask& task);
+
     std::shared_ptr<Planner> planner_;
     std::shared_ptr<ToolExecutor> executor_;
     std::shared_ptr<SessionManager> session_;

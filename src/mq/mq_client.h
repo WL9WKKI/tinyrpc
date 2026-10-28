@@ -68,11 +68,13 @@ public:
     void ack(const std::string& queue, const MqMessage& msg) override;
 
 private:
+    bool connect();
     bool declareQueue(const std::string& queue);
 
     MqConfig cfg_;
     void* conn_{nullptr};  // amqp_connection_state_t
     int channel_{1};
+    bool connected_{false};
 };
 
 // 工厂 + 配置解析

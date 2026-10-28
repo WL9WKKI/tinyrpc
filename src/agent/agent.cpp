@@ -1,6 +1,7 @@
 #include "agent/agent.h"
 
 #include <chrono>
+#include <iostream>
 
 #include <json/json.h>
 
@@ -10,6 +11,7 @@
 #include "metrics/metrics.h"
 #include "planner/planner.h"
 #include "session/session_manager.h"
+#include "state/state_machine.h"
 
 namespace diag {
 
@@ -31,14 +33,40 @@ ReActAgent::ReActAgent(std::shared_ptr<Planner> planner,
 AgentResult ReActAgent::run(const DiagnosisTask& task) {
     ScopedTimer t(metrics_.get(), "diagnosis");
     AgentResult result;
+    try {
+        result = runInternal(task);
+    } catch (const std::exception& e) {
+        std::cerr << "[agent] task " << task.task_id << " crashed: " << e.what() << "\n";
+        // 兜底置 FAILED，避免 detached 线程崩溃拖垮整个进程
+        DiagnosisTask cur = task;
+        cur.status = TaskStatus::FAILED;
+        cur.error_message = std::string("internal error: ") + e.what();
+        cur.finished_at = std::chrono::system_clock::now();
+        store_->updateTask(cur);
+        if (canceller_) canceller_->unregister(task.task_id);
+        result.status = TaskStatus::FAILED;
+        result.error = e.what();
+    }
+    return result;
+}
+
+AgentResult ReActAgent::runInternal(const DiagnosisTask& task) {
+    AgentResult result;
     auto flag = canceller_ ? canceller_->registerTask(task.task_id) : nullptr;
     auto cancelled = [&flag]() { return flag && flag->load(); };
+    auto setStatus = [](DiagnosisTask& c, TaskStatus to) {
+        if (!TaskStateMachine::canTransition(c.status, to)) {
+            std::cerr << "[agent] 非法状态流转 " << taskStatusToString(c.status)
+                      << " -> " << taskStatusToString(to) << "\n";
+        }
+        c.status = to;
+    };
 
     DiagnosisTask cur = task;  // 可变副本，边跑边更新
 
     // 启动即被取消
     if (cancelled()) {
-        cur.status = TaskStatus::CANCELLED;
+        setStatus(cur, TaskStatus::CANCELLED);
         store_->updateTask(cur);
         canceller_->unregister(task.task_id);
         result.status = TaskStatus::CANCELLED;
@@ -49,13 +77,13 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
     session_->getOrCreate(task);
 
     // 置 RUNNING
-    cur.status = TaskStatus::RUNNING;
+    setStatus(cur, TaskStatus::RUNNING);
     cur.started_at = std::chrono::system_clock::now();
     store_->updateTask(cur);
 
     for (int step = 0; step < task.max_steps; ++step) {
         if (cancelled()) {
-            cur.status = TaskStatus::CANCELLED;
+            setStatus(cur, TaskStatus::CANCELLED);
             cur.finished_at = std::chrono::system_clock::now();
             store_->updateTask(cur);
             canceller_->unregister(task.task_id);
@@ -72,7 +100,7 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
             // 聚合证据 + 置信打分
             auto trace = store_->getTrace(task.task_id);
             AggregateResult agg = aggregateEvidence(plan.answer, trace, agg_cfg_);
-            cur.status = TaskStatus::SUCCEEDED;
+            setStatus(cur, TaskStatus::SUCCEEDED);
             cur.result = stringifyJson(agg.toJson());
             cur.confidence = agg.confidence;
             cur.finished_at = std::chrono::system_clock::now();
@@ -83,7 +111,7 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
             return result;
         }
         if (plan.action == PlannerAction::ERROR) {
-            cur.status = TaskStatus::FAILED;
+            setStatus(cur, TaskStatus::FAILED);
             cur.error_message = plan.error;
             cur.finished_at = std::chrono::system_clock::now();
             store_->updateTask(cur);
@@ -117,7 +145,7 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
     }
 
     // 超出 max_steps
-    cur.status = TaskStatus::TIMEOUT;
+    setStatus(cur, TaskStatus::TIMEOUT);
     cur.error_message = "exceeded max_steps";
     cur.finished_at = std::chrono::system_clock::now();
     store_->updateTask(cur);

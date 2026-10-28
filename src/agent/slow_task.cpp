@@ -1,6 +1,7 @@
 #include "agent/slow_task.h"
 
 #include <chrono>
+#include <iostream>
 #include <memory>
 
 #include <json/json.h>
@@ -64,7 +65,14 @@ ToolCallResult SlowTaskDispatcher::executeSlow(const std::string& tool_name,
     msg.body = stringifyJson(body);
     msg.correlation_id = corr_str;
     msg.reply_to = cfg_.slow_results_queue;
-    mq_->publish(cfg_.slow_tasks_queue, msg);
+    if (!mq_->publish(cfg_.slow_tasks_queue, msg)) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pending_.erase(corr);
+        ToolCallResult fail;
+        fail.status = ToolCallStatus::TOOL_ERROR;
+        fail.error = "MQ 不可用，慢任务发布失败";
+        return fail;
+    }
 
     // 等结果
     ToolCallResult result;
@@ -131,26 +139,30 @@ void SlowTaskWorker::stop() {
 
 void SlowTaskWorker::loop() {
     while (running_) {
-        MqMessage msg;
-        if (!mq_->consume(cfg_.slow_tasks_queue, msg, 1000)) {
-            continue;
+        try {
+            MqMessage msg;
+            if (!mq_->consume(cfg_.slow_tasks_queue, msg, 1000)) {
+                continue;
+            }
+            Json::Value req;
+            if (parseJson(msg.body, req) && req.isMember("tool")) {
+                std::string tool = req["tool"].asString();
+                Json::Value args = req.isMember("args") ? req["args"] : Json::Value(Json::objectValue);
+                // 原始同步执行（不再走慢路由，避免死循环）
+                ToolCallResult r = executor_->executeRaw(tool, args);
+                Json::Value resp;
+                resp["status"] = toolCallStatusToString(r.status);
+                resp["data"] = r.data;
+                resp["error"] = r.error;
+                MqMessage out;
+                out.body = stringifyJson(resp);
+                out.correlation_id = msg.correlation_id;
+                mq_->publish(msg.reply_to.empty() ? cfg_.slow_results_queue : msg.reply_to, out);
+            }
+            mq_->ack(cfg_.slow_tasks_queue, msg);
+        } catch (const std::exception& e) {
+            std::cerr << "[worker] 处理慢任务异常: " << e.what() << "\n";
         }
-        Json::Value req;
-        if (parseJson(msg.body, req) && req.isMember("tool")) {
-            std::string tool = req["tool"].asString();
-            Json::Value args = req.isMember("args") ? req["args"] : Json::Value(Json::objectValue);
-            // 原始同步执行（不再走慢路由，避免死循环）
-            ToolCallResult r = executor_->executeRaw(tool, args);
-            Json::Value resp;
-            resp["status"] = toolCallStatusToString(r.status);
-            resp["data"] = r.data;
-            resp["error"] = r.error;
-            MqMessage out;
-            out.body = stringifyJson(resp);
-            out.correlation_id = msg.correlation_id;
-            mq_->publish(msg.reply_to.empty() ? cfg_.slow_results_queue : msg.reply_to, out);
-        }
-        mq_->ack(cfg_.slow_tasks_queue, msg);
     }
 }
 

@@ -1,6 +1,7 @@
 #include "mq/mq_client.h"
 
 #include <chrono>
+#include <iostream>
 #include <sys/time.h>
 
 #include <amqp.h>
@@ -39,20 +40,35 @@ std::string bytesToStr(amqp_bytes_t b) {
 }  // namespace
 
 RabbitMqClient::RabbitMqClient(const MqConfig& cfg) : cfg_(cfg) {
+    connect();
+}
+
+bool RabbitMqClient::connect() {
+    if (connected_) return true;
+    if (conn_) {
+        auto* c = static_cast<amqp_connection_state_t>(conn_);
+        amqp_connection_close(c, AMQP_REPLY_SUCCESS);
+        amqp_destroy_connection(c);
+        conn_ = nullptr;
+    }
     auto* conn = amqp_new_connection();
     conn_ = conn;
     auto* socket = amqp_tcp_socket_new(conn);
-    if (!socket || amqp_socket_open(socket, cfg.host.c_str(), cfg.port) != AMQP_STATUS_OK) {
-        return;  // 连接失败，后续操作会失败
+    if (!socket || amqp_socket_open(socket, cfg_.host.c_str(), cfg_.port) != AMQP_STATUS_OK) {
+        std::cerr << "[rabbitmq] 连接失败 " << cfg_.host << ":" << cfg_.port << "\n";
+        return false;
     }
     amqp_rpc_reply_t login = amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN,
-                                        cfg.user.c_str(), cfg.password.c_str());
+                                        cfg_.user.c_str(), cfg_.password.c_str());
     if (login.reply_type != AMQP_RESPONSE_NORMAL) {
-        return;
+        std::cerr << "[rabbitmq] 登录失败\n";
+        return false;
     }
     amqp_channel_open(conn, channel_);
-    declareQueue(cfg.slow_tasks_queue);
-    declareQueue(cfg.slow_results_queue);
+    declareQueue(cfg_.slow_tasks_queue);
+    declareQueue(cfg_.slow_results_queue);
+    connected_ = true;
+    return true;
 }
 
 RabbitMqClient::~RabbitMqClient() {
@@ -71,6 +87,7 @@ bool RabbitMqClient::declareQueue(const std::string& queue) {
 }
 
 bool RabbitMqClient::publish(const std::string& queue, const MqMessage& msg) {
+    if (!connect()) return false;
     auto* conn = static_cast<amqp_connection_state_t>(conn_);
     amqp_basic_properties_t props;
     props._flags = AMQP_BASIC_CORRELATION_ID_FLAG | AMQP_BASIC_REPLY_TO_FLAG;
@@ -79,10 +96,12 @@ bool RabbitMqClient::publish(const std::string& queue, const MqMessage& msg) {
     int r = amqp_basic_publish(conn, channel_, amqp_empty_bytes,
                                amqp_cstring_bytes(queue.c_str()), 0, 0, &props,
                                amqp_cstring_bytes(msg.body.c_str()));
+    if (r != AMQP_STATUS_OK) connected_ = false;  // 连接可能断开，下次重连
     return r == AMQP_STATUS_OK;
 }
 
 bool RabbitMqClient::consume(const std::string& queue, MqMessage& out, int timeout_ms) {
+    if (!connect()) return false;
     auto* conn = static_cast<amqp_connection_state_t>(conn_);
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
@@ -109,6 +128,7 @@ bool RabbitMqClient::consume(const std::string& queue, MqMessage& out, int timeo
 }
 
 void RabbitMqClient::ack(const std::string&, const MqMessage& msg) {
+    if (!connect()) return;
     auto* conn = static_cast<amqp_connection_state_t>(conn_);
     amqp_basic_ack(conn, channel_, msg.delivery_tag, 0);
 }
