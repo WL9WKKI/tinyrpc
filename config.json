@@ -24,5 +24,21 @@
       "model": "",
       "api_key": ""
     }
+  },
+  "redis": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  },
+  "session": {
+    "key_prefix": "diag:session:",
+    "ttl_seconds": 3600,
+    "truncate": {
+      "max_tokens": 4096,
+      "keep_recent": 4,
+      "chars_per_token": 4
+    }
   }
 }
