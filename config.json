@@ -40,5 +40,10 @@
       "keep_recent": 4,
       "chars_per_token": 4
     }
+  },
+  "tools": {
+    "metric": { "backend": "mock" },
+    "log":    { "backend": "mock" },
+    "case":   { "backend": "mock" }
   }
 }
