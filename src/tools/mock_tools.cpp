@@ -1,6 +1,8 @@
 #include "tools/mock_tools.h"
 
+#include <chrono>
 #include <string>
+#include <thread>
 
 namespace diag {
 
@@ -30,8 +32,13 @@ Json::Value MockMetricTool::inputSchema() const {
     return schema;
 }
 
+bool MockMetricTool::isSlow() const { return slow_; }
+
 ToolResult MockMetricTool::execute(const Json::Value& args) {
     ToolResult r;
+    if (slow_) {
+        std::this_thread::sleep_for(std::chrono::seconds(2));  // 模拟慢查询
+    }
     if (!args.isMember("metric") || !args["metric"].isString() || args["metric"].asString().empty()) {
         r.status = ToolStatus::FAILED;
         r.error = "missing required field: metric";

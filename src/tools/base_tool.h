@@ -38,6 +38,9 @@ public:
     virtual std::string description() const = 0;   // 给 LLM 的说明
     virtual Json::Value inputSchema() const = 0;   // 入参 JSON Schema
 
+    // 是否为慢工具（慢工具走 MQ 异步路径）
+    virtual bool isSlow() const { return false; }
+
     // 同步执行，错误不走异常，进 ToolResult::error
     virtual ToolResult execute(const Json::Value& args) = 0;
 };

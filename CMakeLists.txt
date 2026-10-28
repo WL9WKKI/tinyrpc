@@ -12,9 +12,13 @@ find_package(Drogon REQUIRED)
 find_path(HIREDIS_INCLUDE_DIR hiredis/hiredis.h REQUIRED)
 find_library(HIREDIS_LIBRARY NAMES hiredis REQUIRED)
 
+# RabbitMQ 客户端：librabbitmq（慢任务异步队列）
+find_path(RABBITMQ_INCLUDE_DIR amqp.h REQUIRED)
+find_library(RABBITMQ_LIBRARY NAMES rabbitmq REQUIRED)
+
 # 收集 src 下所有实现文件
 file(GLOB_RECURSE DIAG_SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_executable(diag_agent ${DIAG_SOURCES})
-target_include_directories(diag_agent PRIVATE src ${HIREDIS_INCLUDE_DIR})
-target_link_libraries(diag_agent PRIVATE Drogon::Drogon ${HIREDIS_LIBRARY})
+target_include_directories(diag_agent PRIVATE src ${HIREDIS_INCLUDE_DIR} ${RABBITMQ_INCLUDE_DIR})
+target_link_libraries(diag_agent PRIVATE Drogon::Drogon ${HIREDIS_LIBRARY} ${RABBITMQ_LIBRARY})

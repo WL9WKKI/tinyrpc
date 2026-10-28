@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "agent/slow_task.h"
 #include "tools/mock_tools.h"
 
 namespace diag {
@@ -79,6 +80,15 @@ Json::Value ToolExecutor::describeTools() const {
 }
 
 ToolCallResult ToolExecutor::execute(const std::string& name, const Json::Value& args) {
+    auto it = tools_.find(name);
+    // 慢工具 + 有分发器 → 走 MQ 异步路径
+    if (it != tools_.end() && it->second->isSlow() && slow_dispatcher_) {
+        return slow_dispatcher_->executeSlow(name, args);
+    }
+    return executeRaw(name, args);
+}
+
+ToolCallResult ToolExecutor::executeRaw(const std::string& name, const Json::Value& args) {
     ToolCallResult res;
     // 1. 白名单
     auto it = tools_.find(name);
@@ -112,6 +122,10 @@ ToolCallResult ToolExecutor::execute(const std::string& name, const Json::Value&
     res.status = ToolCallStatus::SUCCESS;
     res.data = r.data;
     return res;
+}
+
+void ToolExecutor::setSlowDispatcher(std::shared_ptr<SlowTaskDispatcher> dispatcher) {
+    slow_dispatcher_ = std::move(dispatcher);
 }
 
 // ---- 工厂 ----

@@ -11,6 +11,8 @@
 
 namespace diag {
 
+class SlowTaskDispatcher;
+
 // 工具调用的执行状态（比工具自身的 ToolStatus 更细，含白名单/校验失败）
 enum class ToolCallStatus : uint8_t {
     SUCCESS = 0,       // 执行成功
@@ -33,16 +35,21 @@ public:
     // 注册工具（白名单 = 已注册的工具名集合）
     void registerTool(std::shared_ptr<BaseTool> tool);
 
-    // 执行一次工具调用
+    // 执行一次工具调用（快工具同步，慢工具走 MQ 分发器）
     ToolCallResult execute(const std::string& name, const Json::Value& args);
+
+    // 原始同步执行（worker 用，不做慢路由）
+    ToolCallResult executeRaw(const std::string& name, const Json::Value& args);
 
     // 生成工具清单（供 Planner 拼提示词）
     Json::Value describeTools() const;
 
+    void setSlowDispatcher(std::shared_ptr<SlowTaskDispatcher> dispatcher);
     void setTimeoutMs(int ms);
 
 private:
     std::map<std::string, std::shared_ptr<BaseTool>> tools_;  // name -> tool
+    std::shared_ptr<SlowTaskDispatcher> slow_dispatcher_;
     int timeout_ms_{5000};
 };
 
