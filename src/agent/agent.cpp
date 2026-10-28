@@ -67,8 +67,12 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
         PlanResult plan = planner_->plan(messages);
 
         if (plan.action == PlannerAction::FINISH) {
+            // 聚合证据 + 置信打分
+            auto trace = store_->getTrace(task.task_id);
+            AggregateResult agg = aggregateEvidence(plan.answer, trace, agg_cfg_);
             cur.status = TaskStatus::SUCCEEDED;
-            cur.result = plan.answer;
+            cur.result = stringifyJson(agg.toJson());
+            cur.confidence = agg.confidence;
             cur.finished_at = std::chrono::system_clock::now();
             store_->updateTask(cur);
             canceller_->unregister(task.task_id);
@@ -119,6 +123,10 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
     result.status = TaskStatus::TIMEOUT;
     result.error = "exceeded max_steps";
     return result;
+}
+
+void ReActAgent::setAggregatorConfig(const AggregatorConfig& cfg) {
+    agg_cfg_ = cfg;
 }
 
 }  // namespace diag

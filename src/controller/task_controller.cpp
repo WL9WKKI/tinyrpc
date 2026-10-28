@@ -26,6 +26,12 @@ Json::Value errorJson(const std::string& msg) {
     v["error"] = msg;
     return v;
 }
+bool parseJson(const std::string& s, Json::Value& out) {
+    Json::CharReaderBuilder b;
+    const std::unique_ptr<Json::CharReader> reader(b.newCharReader());
+    std::string errs;
+    return reader->parse(s.data(), s.data() + s.size(), &out, &errs);
+}
 }  // namespace
 
 TaskController::TaskController(std::shared_ptr<ReActAgent> agent,
@@ -88,8 +94,17 @@ void TaskController::getTask(const drogon::HttpRequestPtr&,
     v["status"] = taskStatusToString(task.status);
     v["current_step"] = task.current_step;
     v["max_steps"] = task.max_steps;
-    v["result"] = task.result;
+    v["confidence"] = task.confidence;
     v["error_message"] = task.error_message;
+    // result 可能是 JSON {answer,evidence,level}，解析出子字段
+    Json::Value r;
+    if (parseJson(task.result, r) && r.isMember("answer")) {
+        v["answer"] = r["answer"];
+        v["evidence"] = r.isMember("evidence") ? r["evidence"] : Json::Value(Json::arrayValue);
+        v["level"] = r.isMember("level") ? r["level"] : "";
+    } else {
+        v["answer"] = task.result;
+    }
     callback(jsonResponse(v));
 }
 

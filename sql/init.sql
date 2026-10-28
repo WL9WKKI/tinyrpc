@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS diagnosis_task (
     current_step  INT           NOT NULL DEFAULT 0,
     result        TEXT          NULL,
     error_message TEXT          NULL,
+    confidence    DOUBLE        NULL,
     created_at    DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at    DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
                                 ON UPDATE CURRENT_TIMESTAMP(3),

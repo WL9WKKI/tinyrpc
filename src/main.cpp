@@ -56,6 +56,7 @@ int main() {
     auto store = diag::createTaskStore(config);
     auto canceller = std::make_shared<diag::CancelManager>();
     auto agent = std::make_shared<diag::ReActAgent>(planner, executor, session, store, canceller);
+    agent->setAggregatorConfig(diag::parseAggregatorConfig(config));
 
     // 注册 HTTP 接口
     auto controller = std::make_shared<diag::TaskController>(agent, store, canceller);

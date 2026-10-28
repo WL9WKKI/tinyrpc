@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "agent/aggregator.h"
 #include "model/types.h"
 
 namespace diag {
@@ -31,12 +32,15 @@ public:
 
     AgentResult run(const DiagnosisTask& task);
 
+    void setAggregatorConfig(const AggregatorConfig& cfg);
+
 private:
     std::shared_ptr<Planner> planner_;
     std::shared_ptr<ToolExecutor> executor_;
     std::shared_ptr<SessionManager> session_;
     std::shared_ptr<ITaskStore> store_;
     std::shared_ptr<CancelManager> canceller_;
+    AggregatorConfig agg_cfg_;
 };
 
 }  // namespace diag

@@ -64,5 +64,9 @@
     "slow_tasks_queue": "diag.slow-tasks",
     "slow_results_queue": "diag.slow-results",
     "timeout_ms": 30000
+  },
+  "aggregator": {
+    "weights": { "query_metric": 0.3, "query_log": 0.3, "search_case": 0.4 },
+    "thresholds": { "low": 0.4, "high": 0.7 }
   }
 }

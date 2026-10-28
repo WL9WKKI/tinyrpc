@@ -47,6 +47,7 @@ void MockTaskStore::updateTask(const DiagnosisTask& task) {
     it->second.current_step = task.current_step;
     it->second.result = task.result;
     it->second.error_message = task.error_message;
+    it->second.confidence = task.confidence;
     it->second.started_at = task.started_at;
     it->second.finished_at = task.finished_at;
     it->second.updated_at = std::chrono::system_clock::now();
@@ -92,14 +93,15 @@ bool MySqlTaskStore::getTask(uint64_t id, DiagnosisTask& out) {
     out.current_step = row["current_step"].as<int>();
     if (!row["result"].isNull()) out.result = row["result"].as<std::string>();
     if (!row["error_message"].isNull()) out.error_message = row["error_message"].as<std::string>();
+    if (!row["confidence"].isNull()) out.confidence = row["confidence"].as<double>();
     return true;
 }
 
 void MySqlTaskStore::updateTask(const DiagnosisTask& task) {
     client_->execSqlSync(
-        "UPDATE diagnosis_task SET status=$1, current_step=$2, result=$3, error_message=$4 WHERE id=$5",
+        "UPDATE diagnosis_task SET status=$1, current_step=$2, result=$3, error_message=$4, confidence=$5 WHERE id=$6",
         static_cast<int>(task.status), task.current_step, task.result, task.error_message,
-        task.task_id);
+        task.confidence, task.task_id);
 }
 
 void MySqlTaskStore::insertTrace(const ReactStep& step) {

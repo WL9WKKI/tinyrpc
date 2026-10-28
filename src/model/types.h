@@ -34,8 +34,9 @@ struct DiagnosisTask {
     TaskStatus status{TaskStatus::PENDING};
     int max_steps{10};          // 最大 ReAct 步数
     int current_step{0};        // 已执行步数
-    std::string result;         // 最终结论/根因
+    std::string result;         // 最终结论/根因（SUCCEEDED 时为 JSON {answer,evidence,...}）
     std::string error_message;  // 失败原因
+    double confidence{0.0};     // 置信分 0~1
     std::chrono::system_clock::time_point created_at{};
     std::chrono::system_clock::time_point updated_at{};
     std::optional<std::chrono::system_clock::time_point> started_at;   // NULL = 未开始
