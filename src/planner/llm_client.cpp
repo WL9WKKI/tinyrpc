@@ -109,6 +109,12 @@ LLMResponse OllamaClient::chat(const std::vector<ChatMessage>& messages) {
 LLMResponse MockLLMClient::chat(const std::vector<ChatMessage>& messages) {
     LLMResponse r;
     r.ok = true;
+    // 首轮故意吐垃圾，演示容错重试
+    if (garbage_first_ && !garbage_done_) {
+        garbage_done_ = true;
+        r.content = "这段输出根本不是合法的 JSON，故意模拟 LLM 出错";
+        return r;
+    }
     // 脚本：按已完成轮次（ASSISTANT 消息数）返回工具调用，最后给结论
     int turns = 0;
     for (const auto& m : messages) {

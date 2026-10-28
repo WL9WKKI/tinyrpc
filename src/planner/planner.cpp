@@ -61,12 +61,13 @@ Planner::Planner(std::shared_ptr<ILLMClient> client, const Json::Value& tools, i
 
 std::string Planner::buildSystemPrompt() const {
     std::string s =
-        "你是一名微服务故障诊断助手。根据故障现象，逐步调用工具收集证据并定位根因。\n\n"
+        "你是一名资深微服务故障诊断工程师。根据故障现象，逐步调用工具收集证据，最终定位根因。\n\n"
         "可用工具：\n" + stringifyJson(tools_) +
-        "\n\n规则：\n"
-        "1. 需要查数据时，输出：{\"tool\":\"<工具名>\",\"args\":{...}}\n"
-        "2. 已能下结论时，输出：{\"answer\":\"<最终诊断结论>\"}\n"
-        "3. 只输出一个 JSON 对象，不要输出任何其他文字。";
+        "\n\n你必须只输出一个 JSON 对象，不要输出任何其他文字或解释：\n"
+        "- 需要查数据时：{\"tool\":\"<工具名>\",\"args\":{...}}\n"
+        "- 已能下结论时：{\"answer\":\"<最终诊断结论>\"}\n\n"
+        "示例1（查指标）：{\"tool\":\"query_metric\",\"args\":{\"metric\":\"memory_rss_bytes\"}}\n"
+        "示例2（下结论）：{\"answer\":\"根因是 JVM 堆内存泄漏，建议修复缓存失效逻辑\"}";
     return s;
 }
 
@@ -94,9 +95,8 @@ PlanResult Planner::plan(const std::vector<ChatMessage>& messages) {
         }
         std::string json;
         if (!extractJson(r.content, json)) {
-            res.action = PlannerAction::ERROR;
-            res.error = "no JSON found in LLM output";
-            return res;
+            req.push_back({MessageRole::USER, "你的输出里没有 JSON，请只输出一个 JSON 对象。", -1});
+            continue;  // 无 JSON 也重试，而非直接失败
         }
         Json::Value root;
         if (parseJson(json, root)) {
@@ -141,7 +141,8 @@ std::shared_ptr<Planner> createPlanner(const Json::Value& root, const Json::Valu
         int timeout_ms = llm.isMember("timeout_ms") ? llm["timeout_ms"].asInt() : 30000;
         client = std::make_shared<OllamaClient>(base_url, model, api_key, timeout_ms);
     } else {
-        client = std::make_shared<MockLLMClient>();
+        bool garbage_first = llm.isMember("garbage_first") ? llm["garbage_first"].asBool() : false;
+        client = std::make_shared<MockLLMClient>(garbage_first);
     }
     return std::make_shared<Planner>(client, tools, max_retries);
 }

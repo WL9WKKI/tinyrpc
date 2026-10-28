@@ -37,9 +37,16 @@ private:
 };
 
 // mock：返回脚本化回复（测闭环/重试，不开 ollama）
+// garbage_first=true 时首轮故意吐非法 JSON，演示容错重试
 class MockLLMClient : public ILLMClient {
 public:
+    explicit MockLLMClient(bool garbage_first = false) : garbage_first_(garbage_first) {}
+
     LLMResponse chat(const std::vector<ChatMessage>& messages) override;
+
+private:
+    bool garbage_first_{false};
+    bool garbage_done_{false};
 };
 
 }  // namespace diag

@@ -25,7 +25,8 @@
       "base_url": "http://127.0.0.1:11434/v1",
       "model": "qwen2.5:7b",
       "api_key": "",
-      "timeout_ms": 30000
+      "timeout_ms": 30000,
+      "garbage_first": false
     }
   },
   "redis": {
