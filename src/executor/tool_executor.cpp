@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "agent/slow_task.h"
+#include "metrics/metrics.h"
 #include "tools/mock_tools.h"
 
 namespace diag {
@@ -80,6 +81,7 @@ Json::Value ToolExecutor::describeTools() const {
 }
 
 ToolCallResult ToolExecutor::execute(const std::string& name, const Json::Value& args) {
+    ScopedTimer t(metrics_.get(), "tool");
     auto it = tools_.find(name);
     // 慢工具 + 有分发器 → 走 MQ 异步路径
     if (it != tools_.end() && it->second->isSlow() && slow_dispatcher_) {
@@ -128,6 +130,10 @@ void ToolExecutor::setSlowDispatcher(std::shared_ptr<SlowTaskDispatcher> dispatc
     slow_dispatcher_ = std::move(dispatcher);
 }
 
+void ToolExecutor::setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics) {
+    metrics_ = std::move(metrics);
+}
+
 // ---- 工厂 ----
 
 std::shared_ptr<ToolExecutor> createToolExecutor(const Json::Value& root) {
@@ -143,7 +149,8 @@ std::shared_ptr<ToolExecutor> createToolExecutor(const Json::Value& root) {
         return c.isMember("backend") ? c["backend"].asString() : "mock";
     };
     if (backend(tools["metric"]) == "mock") {
-        exec->registerTool(std::make_shared<MockMetricTool>());
+        bool slow = tools["metric"].isMember("slow") ? tools["metric"]["slow"].asBool() : false;
+        exec->registerTool(std::make_shared<MockMetricTool>(slow));
     }
     if (backend(tools["log"]) == "mock") {
         exec->registerTool(std::make_shared<MockLogTool>());

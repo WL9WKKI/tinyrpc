@@ -11,6 +11,7 @@
 
 namespace diag {
 
+class MetricsRegistry;
 class SlowTaskDispatcher;
 
 // 工具调用的执行状态（比工具自身的 ToolStatus 更细，含白名单/校验失败）
@@ -45,11 +46,13 @@ public:
     Json::Value describeTools() const;
 
     void setSlowDispatcher(std::shared_ptr<SlowTaskDispatcher> dispatcher);
+    void setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics);
     void setTimeoutMs(int ms);
 
 private:
     std::map<std::string, std::shared_ptr<BaseTool>> tools_;  // name -> tool
     std::shared_ptr<SlowTaskDispatcher> slow_dispatcher_;
+    std::shared_ptr<MetricsRegistry> metrics_;
     int timeout_ms_{5000};
 };
 

@@ -8,9 +8,11 @@
 #include "agent/agent.h"
 #include "agent/cancel_manager.h"
 #include "agent/slow_task.h"
+#include "controller/metrics_controller.h"
 #include "controller/task_controller.h"
 #include "dao/task_store.h"
 #include "executor/tool_executor.h"
+#include "metrics/metrics.h"
 #include "mq/mq_client.h"
 #include "planner/planner.h"
 #include "session/session_manager.h"
@@ -58,9 +60,17 @@ int main() {
     auto agent = std::make_shared<diag::ReActAgent>(planner, executor, session, store, canceller);
     agent->setAggregatorConfig(diag::parseAggregatorConfig(config));
 
+    // 指标埋点
+    auto metrics = std::make_shared<diag::MetricsRegistry>();
+    planner->setMetricsRegistry(metrics);
+    executor->setMetricsRegistry(metrics);
+    agent->setMetricsRegistry(metrics);
+
     // 注册 HTTP 接口
     auto controller = std::make_shared<diag::TaskController>(agent, store, canceller);
     drogon::app().registerController(controller);
+    auto metricsController = std::make_shared<diag::MetricsController>(metrics);
+    drogon::app().registerController(metricsController);
 
     drogon::app().run();
     return 0;

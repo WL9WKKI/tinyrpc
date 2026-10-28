@@ -16,9 +16,13 @@ find_library(HIREDIS_LIBRARY NAMES hiredis REQUIRED)
 find_path(RABBITMQ_INCLUDE_DIR amqp.h REQUIRED)
 find_library(RABBITMQ_LIBRARY NAMES rabbitmq REQUIRED)
 
+# HdrHistogram（延迟统计）
+find_path(HDR_HISTOGRAM_INCLUDE_DIR hdr/hdr_histogram.h REQUIRED)
+find_library(HDR_HISTOGRAM_LIBRARY NAMES hdr_histogram REQUIRED)
+
 # 收集 src 下所有实现文件
 file(GLOB_RECURSE DIAG_SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_executable(diag_agent ${DIAG_SOURCES})
-target_include_directories(diag_agent PRIVATE src ${HIREDIS_INCLUDE_DIR} ${RABBITMQ_INCLUDE_DIR})
-target_link_libraries(diag_agent PRIVATE Drogon::Drogon ${HIREDIS_LIBRARY} ${RABBITMQ_LIBRARY})
+target_include_directories(diag_agent PRIVATE src ${HIREDIS_INCLUDE_DIR} ${RABBITMQ_INCLUDE_DIR} ${HDR_HISTOGRAM_INCLUDE_DIR})
+target_link_libraries(diag_agent PRIVATE Drogon::Drogon ${HIREDIS_LIBRARY} ${RABBITMQ_LIBRARY} ${HDR_HISTOGRAM_LIBRARY})

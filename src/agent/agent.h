@@ -13,6 +13,7 @@ class ToolExecutor;
 class SessionManager;
 class ITaskStore;
 class CancelManager;
+class MetricsRegistry;
 
 // 诊断结果
 struct AgentResult {
@@ -33,6 +34,7 @@ public:
     AgentResult run(const DiagnosisTask& task);
 
     void setAggregatorConfig(const AggregatorConfig& cfg);
+    void setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics);
 
 private:
     std::shared_ptr<Planner> planner_;
@@ -41,6 +43,7 @@ private:
     std::shared_ptr<ITaskStore> store_;
     std::shared_ptr<CancelManager> canceller_;
     AggregatorConfig agg_cfg_;
+    std::shared_ptr<MetricsRegistry> metrics_;
 };
 
 }  // namespace diag

@@ -4,6 +4,8 @@
 
 #include <json/json.h>
 
+#include "metrics/metrics.h"
+
 namespace diag {
 
 const char* plannerActionToString(PlannerAction a) {
@@ -80,7 +82,11 @@ PlanResult Planner::plan(const std::vector<ChatMessage>& messages) {
     }
 
     for (int attempt = 0; attempt <= max_retries_; ++attempt) {
-        LLMResponse r = client_->chat(req);
+        LLMResponse r;
+        {
+            ScopedTimer t(metrics_.get(), "llm");
+            r = client_->chat(req);
+        }
         if (!r.ok) {
             res.action = PlannerAction::ERROR;
             res.error = r.error;
@@ -138,6 +144,10 @@ std::shared_ptr<Planner> createPlanner(const Json::Value& root, const Json::Valu
         client = std::make_shared<MockLLMClient>();
     }
     return std::make_shared<Planner>(client, tools, max_retries);
+}
+
+void Planner::setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics) {
+    metrics_ = std::move(metrics);
 }
 
 }  // namespace diag

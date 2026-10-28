@@ -7,6 +7,7 @@
 #include "agent/cancel_manager.h"
 #include "dao/task_store.h"
 #include "executor/tool_executor.h"
+#include "metrics/metrics.h"
 #include "planner/planner.h"
 #include "session/session_manager.h"
 
@@ -28,6 +29,7 @@ ReActAgent::ReActAgent(std::shared_ptr<Planner> planner,
       canceller_(std::move(canceller)) {}
 
 AgentResult ReActAgent::run(const DiagnosisTask& task) {
+    ScopedTimer t(metrics_.get(), "diagnosis");
     AgentResult result;
     auto flag = canceller_ ? canceller_->registerTask(task.task_id) : nullptr;
     auto cancelled = [&flag]() { return flag && flag->load(); };
@@ -127,6 +129,10 @@ AgentResult ReActAgent::run(const DiagnosisTask& task) {
 
 void ReActAgent::setAggregatorConfig(const AggregatorConfig& cfg) {
     agg_cfg_ = cfg;
+}
+
+void ReActAgent::setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics) {
+    metrics_ = std::move(metrics);
 }
 
 }  // namespace diag

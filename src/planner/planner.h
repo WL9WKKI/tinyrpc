@@ -12,6 +12,8 @@
 
 namespace diag {
 
+class MetricsRegistry;
+
 // Planner 的决策动作
 enum class PlannerAction : uint8_t {
     CALL_TOOL = 0,  // 需要调用工具
@@ -44,11 +46,14 @@ public:
     // 生成 system 提示词（含工具清单）
     std::string buildSystemPrompt() const;
 
+    void setMetricsRegistry(std::shared_ptr<MetricsRegistry> metrics);
+
 private:
     std::shared_ptr<ILLMClient> client_;
     Json::Value tools_;
     int max_retries_;
     std::string system_prompt_;
+    std::shared_ptr<MetricsRegistry> metrics_;
 };
 
 const char* plannerActionToString(PlannerAction a);
