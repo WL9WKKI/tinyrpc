@@ -51,5 +51,8 @@
   },
   "executor": {
     "timeout_ms": 5000
+  },
+  "storage": {
+    "backend": "mock"
   }
 }

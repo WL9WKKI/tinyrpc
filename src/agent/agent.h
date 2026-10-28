@@ -3,8 +3,6 @@
 #include <memory>
 #include <string>
 
-#include <json/json.h>
-
 #include "model/types.h"
 
 namespace diag {
@@ -12,6 +10,8 @@ namespace diag {
 class Planner;
 class ToolExecutor;
 class SessionManager;
+class ITaskStore;
+class CancelManager;
 
 // 诊断结果
 struct AgentResult {
@@ -20,12 +20,14 @@ struct AgentResult {
     std::string error;   // 失败原因
 };
 
-// 极简 ReAct 主循环：Planner → ToolExecutor → SessionManager → 状态机
+// 极简 ReAct 主循环：Planner → ToolExecutor → SessionManager，边跑边落库 + 支持取消
 class ReActAgent {
 public:
     ReActAgent(std::shared_ptr<Planner> planner,
                std::shared_ptr<ToolExecutor> executor,
-               std::shared_ptr<SessionManager> session);
+               std::shared_ptr<SessionManager> session,
+               std::shared_ptr<ITaskStore> store,
+               std::shared_ptr<CancelManager> canceller);
 
     AgentResult run(const DiagnosisTask& task);
 
@@ -33,9 +35,8 @@ private:
     std::shared_ptr<Planner> planner_;
     std::shared_ptr<ToolExecutor> executor_;
     std::shared_ptr<SessionManager> session_;
+    std::shared_ptr<ITaskStore> store_;
+    std::shared_ptr<CancelManager> canceller_;
 };
-
-// 工厂：从 config.json 组装（session + executor + planner）
-std::shared_ptr<ReActAgent> createAgent(const Json::Value& root);
 
 }  // namespace diag

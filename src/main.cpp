@@ -1,14 +1,21 @@
 #include <fstream>
 #include <iostream>
+#include <memory>
 
+#include <drogon/drogon.h>
 #include <json/json.h>
 
 #include "agent/agent.h"
-#include "model/types.h"
+#include "agent/cancel_manager.h"
+#include "controller/task_controller.h"
+#include "dao/task_store.h"
+#include "executor/tool_executor.h"
+#include "planner/planner.h"
+#include "session/session_manager.h"
 
 namespace {
 
-// 直接读 config.json（mock 模式即可跑通闭环，无需 Drogon 事件循环）
+// 业务配置单独读一份（agent/session/redis/tools/executor/storage）
 Json::Value loadConfigFile(const std::string& path) {
     Json::Value root;
     std::ifstream ifs(path);
@@ -27,23 +34,23 @@ Json::Value loadConfigFile(const std::string& path) {
 }  // namespace
 
 int main() {
-    // 最小闭环演示：mock LLM + mock 工具 + mock 会话，串起完整 ReAct 流程
+    // Drogon 自身配置（listeners / db_clients）
+    drogon::app().loadConfigFile("config.json");
+    // 业务配置（给各模块工厂用）
     Json::Value config = loadConfigFile("config.json");
-    auto agent = diag::createAgent(config);
 
-    diag::DiagnosisTask task;
-    task.task_id = 1;
-    task.service_name = "order-service";
-    task.symptom = "服务内存持续上涨，最终被 OOM 杀死";
-    task.max_steps = 10;
+    // 组装依赖
+    auto session = diag::createSessionManager(config);
+    auto executor = diag::createToolExecutor(config);
+    auto planner = diag::createPlanner(config, executor->describeTools());
+    auto store = diag::createTaskStore(config);
+    auto canceller = std::make_shared<diag::CancelManager>();
+    auto agent = std::make_shared<diag::ReActAgent>(planner, executor, session, store, canceller);
 
-    auto result = agent->run(task);
+    // 注册 HTTP 接口
+    auto controller = std::make_shared<diag::TaskController>(agent, store, canceller);
+    drogon::app().registerController(controller);
 
-    std::cout << "status: " << diag::taskStatusToString(result.status) << "\n";
-    if (result.status == diag::TaskStatus::SUCCEEDED) {
-        std::cout << "answer: " << result.answer << "\n";
-    } else {
-        std::cout << "error: " << result.error << "\n";
-    }
+    drogon::app().run();
     return 0;
 }
