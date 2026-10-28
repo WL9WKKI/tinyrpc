@@ -45,5 +45,8 @@
     "metric": { "backend": "mock" },
     "log":    { "backend": "mock" },
     "case":   { "backend": "mock" }
+  },
+  "executor": {
+    "timeout_ms": 5000
   }
 }
