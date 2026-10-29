@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS diagnosis_task (
                                 ON UPDATE CURRENT_TIMESTAMP(3),
     started_at    DATETIME(3)   NULL,
     finished_at   DATETIME(3)   NULL,
+    deadline      DATETIME(3)   NULL,          -- 超时截止时间（UTC），NULL=未设置
     KEY idx_status (status),
     KEY idx_created_at (created_at)
 ) ENGINE=InnoDB;

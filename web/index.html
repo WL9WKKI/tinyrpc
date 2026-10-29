@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>微服务故障诊断 Agent</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🔍 微服务故障诊断 Agent</div>
+    <span class="subtitle">ReAct 诊断控制台</span>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a href="#" class="nav-item active" data-view="diagnose">诊断</a>
+      <a href="#" class="nav-item" data-view="tasks">任务列表</a>
+      <a href="#" class="nav-item" data-view="metrics">指标</a>
+      <a href="#" class="nav-item" data-view="config">配置</a>
+    </nav>
+
+    <main class="content">
+      <!-- 诊断 -->
+      <section id="view-diagnose" class="view active">
+        <div class="card">
+          <h2>新建诊断</h2>
+          <form id="diagnose-form" class="diag-form">
+            <div class="row">
+              <label>服务名
+                <input type="text" id="diag-service" placeholder="order-service" required>
+              </label>
+              <label>严重级别
+                <select id="diag-severity">
+                  <option value="0">P0</option>
+                  <option value="1">P1</option>
+                  <option value="2" selected>P2</option>
+                  <option value="3">P3</option>
+                </select>
+              </label>
+              <label>最大步数
+                <input type="number" id="diag-max-steps" value="10" min="1" max="50">
+              </label>
+            </div>
+            <label>故障现象
+              <textarea id="diag-symptom" rows="3" placeholder="服务内存持续上涨，最终被 OOM 杀死" required></textarea>
+            </label>
+            <button type="submit" class="btn primary">开始诊断</button>
+          </form>
+        </div>
+
+        <div id="diagnose-result" class="card hidden">
+          <div class="result-head">
+            <span id="diag-status" class="badge">—</span>
+            <span id="diag-step" class="muted"></span>
+            <button id="diag-cancel" class="btn small hidden">取消</button>
+          </div>
+          <div id="diag-confidence-wrap" class="confidence hidden">
+            <div class="conf-label">置信度 <span id="diag-confidence"></span> <span id="diag-level" class="badge"></span></div>
+            <div class="conf-bar"><div id="diag-conf-fill" class="conf-fill"></div></div>
+          </div>
+          <div id="diag-answer" class="answer"></div>
+          <div id="diag-evidence" class="evidence"></div>
+          <div id="diag-trace" class="timeline"></div>
+        </div>
+      </section>
+
+      <!-- 任务列表 -->
+      <section id="view-tasks" class="view">
+        <div class="card">
+          <h2>任务列表</h2>
+          <table class="table">
+            <thead>
+              <tr><th>ID</th><th>服务</th><th>现象</th><th>状态</th><th>置信度</th><th>步数</th></tr>
+            </thead>
+            <tbody id="tasks-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 指标 -->
+      <section id="view-metrics" class="view">
+        <div class="cards" id="metrics-cards"></div>
+      </section>
+
+      <!-- 配置 -->
+      <section id="view-config" class="view">
+        <div class="card">
+          <h2>配置</h2>
+          <form id="config-form"></form>
+          <button id="config-save" class="btn primary">保存配置</button>
+          <div id="config-result" class="muted"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

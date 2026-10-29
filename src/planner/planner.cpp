@@ -133,13 +133,15 @@ std::shared_ptr<Planner> createPlanner(const Json::Value& root, const Json::Valu
     int max_retries = agent.isMember("max_retries") ? agent["max_retries"].asInt() : 3;
 
     std::shared_ptr<ILLMClient> client;
-    if (backend == "ollama") {
+    if (backend == "openai") {
         std::string base_url = llm.isMember("base_url") ? llm["base_url"].asString()
-                                                        : "http://127.0.0.1:11434/v1";
-        std::string model = llm.isMember("model") ? llm["model"].asString() : "qwen2.5:7b";
+                                                        : "https://api.deepseek.com/v1";
+        std::string model = llm.isMember("model") ? llm["model"].asString() : "deepseek-chat";
         std::string api_key = llm.isMember("api_key") ? llm["api_key"].asString() : "";
         int timeout_ms = llm.isMember("timeout_ms") ? llm["timeout_ms"].asInt() : 30000;
-        client = std::make_shared<OllamaClient>(base_url, model, api_key, timeout_ms);
+        double temperature = llm.isMember("temperature") ? llm["temperature"].asDouble() : 0.0;
+        client = std::make_shared<OpenAICompatibleClient>(base_url, model, api_key, timeout_ms,
+                                                          max_retries, temperature);
     } else {
         bool garbage_first = llm.isMember("garbage_first") ? llm["garbage_first"].asBool() : false;
         client = std::make_shared<MockLLMClient>(garbage_first);

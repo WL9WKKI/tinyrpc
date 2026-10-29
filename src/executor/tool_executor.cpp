@@ -5,6 +5,7 @@
 #include "agent/slow_task.h"
 #include "metrics/metrics.h"
 #include "tools/mock_tools.h"
+#include "tools/real_tools.h"
 
 namespace diag {
 
@@ -143,16 +144,20 @@ std::shared_ptr<ToolExecutor> createToolExecutor(const Json::Value& root) {
         exec->setTimeoutMs(e["timeout_ms"].asInt());
     }
 
-    // 按 backend 注册工具（本期只有 mock，real 留待后续）
+    // 按 backend 注册工具（mock / prometheus / elasticsearch，可切换）
     const Json::Value& tools = root["tools"];
     auto backend = [](const Json::Value& c) -> std::string {
         return c.isMember("backend") ? c["backend"].asString() : "mock";
     };
-    if (backend(tools["metric"]) == "mock") {
+    if (backend(tools["metric"]) == "prometheus") {
+        exec->registerTool(std::make_shared<RealMetricTool>(parsePrometheusConfig(tools["metric"])));
+    } else {
         bool slow = tools["metric"].isMember("slow") ? tools["metric"]["slow"].asBool() : false;
         exec->registerTool(std::make_shared<MockMetricTool>(slow));
     }
-    if (backend(tools["log"]) == "mock") {
+    if (backend(tools["log"]) == "elasticsearch") {
+        exec->registerTool(std::make_shared<RealLogTool>(parseEsConfig(tools["log"])));
+    } else {
         exec->registerTool(std::make_shared<MockLogTool>());
     }
     if (backend(tools["case"]) == "mock") {

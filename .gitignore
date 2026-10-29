@@ -16,3 +16,11 @@
 
 # compile database
 compile_commands.json
+
+# secrets (contains api_key)
+config.json
+
+# Claude Code / local notes (not part of the project)
+.claude/
+CLAUDE.md
+interview_notes.html

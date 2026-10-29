@@ -92,6 +92,19 @@ AgentResult ReActAgent::runInternal(const DiagnosisTask& task) {
             return result;
         }
 
+        // 超时截止：deadline 过期直接 TIMEOUT（复用终态收尾）
+        if (cur.deadline.time_since_epoch().count() != 0 &&
+            std::chrono::system_clock::now() > cur.deadline) {
+            setStatus(cur, TaskStatus::TIMEOUT);
+            cur.error_message = "exceeded deadline";
+            cur.finished_at = std::chrono::system_clock::now();
+            store_->updateTask(cur);
+            canceller_->unregister(task.task_id);
+            result.status = TaskStatus::TIMEOUT;
+            result.error = "exceeded deadline";
+            return result;
+        }
+
         SessionContext ctx = session_->getOrCreate(task);
         auto messages = session_->buildMessages(ctx);
         PlanResult plan = planner_->plan(messages);

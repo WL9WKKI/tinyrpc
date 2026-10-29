@@ -35,7 +35,12 @@ SessionContext SessionManager::getOrCreate(const DiagnosisTask& task) {
     // 未命中：初始化 system 提示词 + 首条现象
     ctx.task_id = task.task_id;
     ctx.messages.push_back({MessageRole::SYSTEM, kDefaultSystemPrompt, -1});
-    ctx.messages.push_back({MessageRole::USER, task.symptom, -1});
+    // 首条 USER 消息带上服务名，避免后续 query_log 缺 service
+    std::string symptom = task.symptom;
+    if (!task.service_name.empty()) {
+        symptom = "服务 " + task.service_name + " 故障现象：" + task.symptom;
+    }
+    ctx.messages.push_back({MessageRole::USER, symptom, -1});
     ctx.updated_at = std::chrono::system_clock::now();
     store_->save(ctx);
     return ctx;

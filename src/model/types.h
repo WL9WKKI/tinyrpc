@@ -41,6 +41,7 @@ struct DiagnosisTask {
     std::chrono::system_clock::time_point updated_at{};
     std::optional<std::chrono::system_clock::time_point> started_at;   // NULL = 未开始
     std::optional<std::chrono::system_clock::time_point> finished_at;  // NULL = 未结束
+    std::chrono::system_clock::time_point deadline{};   // 超时截止（UTC），0 = 未设置
 };
 
 // ReAct 单步轨迹（Thought/Action/Observation）
